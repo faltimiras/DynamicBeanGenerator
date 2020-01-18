@@ -1,0 +1,3 @@
+# Dynamic bean generator
+
+WIP
