@@ -9,8 +9,9 @@ import org.junit.Test;
 
 import javax.persistence.Index;
 import javax.persistence.UniqueConstraint;
-import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,18 +25,18 @@ public class HibernateTest {
 
 		ClassDef personDef = new ClassDef("cat.altimiras.Person")
 				.addAnnotation("javax.persistence.Entity")
-					.addAnnotationField("name", "")
-					.build()
+				.addAnnotationField("name", "")
+				.build()
 				.addAnnotation("javax.persistence.Table")
-					.addAnnotationField("name", "p")
-					.addAnnotationField("catalog", "")
-					.addAnnotationField("uniqueConstraints", new UniqueConstraint[]{})
-					.addAnnotationField("schema", "")
-					.addAnnotationField("indexes", new Index[]{})
+				.addAnnotationField("name", "p")
+				.addAnnotationField("catalog", "")
+				.addAnnotationField("uniqueConstraints", new UniqueConstraint[]{})
+				.addAnnotationField("schema", "")
+				.addAnnotationField("indexes", new Index[]{})
 
-					.build()
+				.build()
 				.addField("name", "String")
-					.addAnnotation("javax.persistence.Id").build()
+				.addAnnotation("javax.persistence.Id").build()
 				.build()
 				.addField("surname", "String").build()
 				.addField("height", "integer").build();
@@ -43,17 +44,18 @@ public class HibernateTest {
 		Generator generator = new Generator();
 		Class personClass = generator.create(personDef, this.getClass().getClassLoader());
 
-		Object personInstance = personClass.getConstructor().newInstance();
-		setValue(personInstance, "name", "Leo");
-		setValue(personInstance, "surname", "Messi");
-		setValue(personInstance, "height", 170);
+
+		Map<String, Object> messi = new HashMap<>(3);
+		messi.put("name", "Leo");
+		messi.put("surname", "Messi");
+		messi.put("height", 170);
+
+		Object personInstance = personClass.getConstructor(Map.class).newInstance(messi);
 
 		SessionFactory sessionFactory = setUpHibernate(personClass);
-
 		store(sessionFactory, personInstance);
 
 		List personsNames = sessionFactory.openSession().createQuery("Select pe.name from Person pe").getResultList();
-
 		assertEquals("Leo", personsNames.get(0));
 	}
 
@@ -79,11 +81,4 @@ public class HibernateTest {
 			session.getTransaction().commit();
 		}
 	}
-
-	private void setValue(Object o, String field, Object value) throws Exception {
-		Field f = o.getClass().getDeclaredField(field);
-		f.setAccessible(true);
-		f.set(o, value);
-	}
-
 }

@@ -6,6 +6,8 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
@@ -101,5 +103,27 @@ public class GeneratorTest {
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface TestAnnotation {
 		String val() default "";
+	}
+
+	@Test
+	public void mapConstructor() throws Exception {
+
+		ClassDef classDef = new ClassDef("cat.altimiras.TestWithMap")
+				.addField("value1", "integer").build();
+
+		Generator generator = new Generator();
+		Class testClass = generator.create(classDef, this.getClass().getClassLoader());
+
+		Map<String, Object> param = new HashMap<>(1);
+		param.put("value1", 3);
+
+		Object o = testClass.getConstructor(Map.class).newInstance(param);
+
+
+		Method getter = testClass.getMethod("getValue1");
+		Integer result = (Integer) getter.invoke(o);
+
+		assertEquals(Integer.valueOf(3), result);
+		assertEquals("cat.altimiras.TestWithMap", testClass.getName());
 	}
 }

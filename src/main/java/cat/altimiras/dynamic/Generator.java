@@ -4,25 +4,36 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.FixedValue;
+import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.annotation.Annotation;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Generator {
 
+	public Class create(ClassDef definition) throws Exception {
+		return this.create(definition, this.getClass().getClassLoader());
+	}
 
 	public Class create(ClassDef definition, ClassLoader classLoader) throws Exception {
 
+		//create the class
 		DynamicType.Builder builder = new ByteBuddy()
-				.subclass(Object.class)
+				.subclass(Object.class, ConstructorStrategy.Default.NO_CONSTRUCTORS)
 				.name(definition.getFullname());
 
+		//add class annotations
 		for (AnnotationDef annotation : definition.getAnnotations()) {
 			builder = builder.annotateType(generateAnnotationClass(annotation, classLoader));
 		}
 
+		//add fields
 		for (FieldDef fdef : definition.getFields()) {
 
 			Class type;
@@ -32,24 +43,46 @@ public class Generator {
 				type = create(fdef.getNested(), classLoader);
 			}
 
+			//define the fields
 			String capitalized = capitalize(fdef.getName());
 			DynamicType.Builder.FieldDefinition builderField = builder
 					.defineField(fdef.getName(), type, Visibility.PRIVATE);
 
+			//add field annotations
 			for (AnnotationDef annotation : fdef.getAnnotations()) {
 				builderField = builderField.annotateField(generateAnnotationClass(annotation, classLoader));
 			}
-			builder = (DynamicType.Builder)builderField;
-			builder = builder.defineMethod("get" + capitalized, type, Visibility.PUBLIC)
+
+			//add the getters and the setters following java standard
+			builder = (DynamicType.Builder) builderField;
+			builder = builder
+					.defineMethod("get" + capitalized, type, Visibility.PUBLIC)
 					.intercept(FieldAccessor.ofBeanProperty())
 					.defineMethod("set" + capitalized, void.class, Visibility.PUBLIC)
 					.withParameters(type)
 					.intercept(FieldAccessor.ofBeanProperty());
 		}
 
-		return builder.make()
+		MapToVar mapToVar = new MapToVar();
+
+		//add empty constructors
+		builder = builder
+				//empty constructor
+				.defineConstructor(Visibility.PUBLIC)
+				.intercept(MethodCall.invoke(Object.class.getDeclaredConstructor()))
+				//constructor that accept a Map and delegates it to mapToVar
+				.defineConstructor(Visibility.PUBLIC)
+				.withParameter(Map.class)
+				.intercept(MethodCall.invoke(Object.class.getDeclaredConstructor()).andThen(MethodDelegation.to(mapToVar)));
+
+		//build the class
+		Class theClass = builder.make()
 				.load(classLoader, ClassLoadingStrategy.Default.INJECTION)
 				.getLoaded();
+
+		//initialize the constructor implementation once we have the class built
+		mapToVar.init(theClass, definition.getFields().stream().map(FieldDef::getName).collect(Collectors.toList()));
+		return theClass;
 	}
 
 	private Annotation generateAnnotationClass(AnnotationDef<?> annotationDef, ClassLoader classLoader) throws Exception {
@@ -93,4 +126,6 @@ public class Generator {
 		return new String(newCodePoints, 0, outOffset);
 
 	}
+
+
 }

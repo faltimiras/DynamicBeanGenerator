@@ -1,9 +1,14 @@
 package cat.altimiras.dynamic;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ClassDef {
+
+	private static ObjectMapper mapper = new ObjectMapper();
 
 	private String fullname;
 	private List<AnnotationDef<ClassDef>> annotations = new ArrayList<>();
@@ -54,5 +59,13 @@ public class ClassDef {
 	public FieldDef addField(FieldDef fieldDef) {
 		this.fields.add(fieldDef);
 		return fieldDef;
+	}
+
+	public static ClassDef from(String json) throws Exception{
+		return mapper.readValue(json, ClassDef.class);
+	}
+
+	public static ClassDef from(Path json)throws Exception{
+		return mapper.readValue(json.toFile(), ClassDef.class);
 	}
 }
