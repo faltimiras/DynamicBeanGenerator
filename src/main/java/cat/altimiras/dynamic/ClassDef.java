@@ -1,13 +1,9 @@
 package cat.altimiras.dynamic;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class ClassDef {
-
-	private static ObjectMapper mapper = new ObjectMapper();
 
 	private String fullname;
 	private List<AnnotationDef<ClassDef>> annotations = new ArrayList<>();
@@ -37,7 +33,7 @@ public class ClassDef {
 		return annotations;
 	}
 
-	public AnnotationDef<ClassDef> addAnnotation(String fullname){
+	public AnnotationDef<ClassDef> addAnnotation(String fullname) {
 		AnnotationDef<ClassDef> annotationDef = new AnnotationDef(fullname, this);
 		this.annotations.add(annotationDef);
 		return annotationDef;
